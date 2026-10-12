@@ -1,10 +1,12 @@
 #pragma once
 
 #include "camera.h"
+#include "glm/ext/vector_float3.hpp"
 
 struct GLFWwindow;
 
 struct AppState {
+    glm::vec3 lightPos{1.2f, 1.0f, 2.0f};
     Camera camera{glm::vec3(0.0f, 0.0f, 3.0f)};
     float lastX = 400.0f;
     float lastY = 300.0f;
