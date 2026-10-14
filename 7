@@ -1,0 +1,269 @@
+#include "VAO.h"
+#include "VBO.h"
+#include <glad/glad.h>
+#include <GLFW/glfw3.h>
+
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
+#include <iterator>
+#include <map>
+
+#define STB_IMAGE_IMPLEMENTATION
+#include <filesystem.h>
+#include <shader.h>
+#include <camera.h>
+#include <model.h>
+#include <callback.h>
+#include "stb_image.h"
+
+#include <iostream>
+// settings
+#ifndef SHADER_DIR
+#define SHADER_DIR "shaders/"
+#endif //SHADER_DIR
+const unsigned int SCR_WIDTH = 800;
+const unsigned int SCR_HEIGHT = 600;
+
+GLFWwindow* window;
+
+int main()
+{
+    // glfw: initialize and configure
+    // ------------------------------
+    if(!glfwInit()) return -1;
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+
+#ifdef __APPLE__
+    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
+#endif
+
+    // glfw window creation
+    // --------------------
+    window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "LearnOpenGL", NULL, NULL);
+    if (window == NULL)
+    {
+        std::cout << "Failed to create GLFW window" << std::endl;
+        glfwTerminate();
+        return -1;
+    }
+
+    AppState state;
+    state.lastX = SCR_WIDTH /2.0f;
+    state.lastY = SCR_HEIGHT /2.0f;   
+    glfwSetWindowUserPointer(window, &state);
+    // tell GLFW to capture our mouse
+    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+
+    glfwMakeContextCurrent(window);
+    glfwSetFramebufferSizeCallback(window, Callback::framebuffer_size_callback);
+    glfwSetCursorPosCallback(window, Callback::mouse_callback);
+    glfwSetScrollCallback(window, Callback::scroll_callback);
+
+
+    // glad: load all OpenGL function pointers
+    // ---------------------------------------
+    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
+    {
+        std::cout << "Failed to initialize GLAD" << std::endl;
+        return -1;
+    }
+
+    // configure global opengl state
+    // -----------------------------
+    glEnable(GL_DEPTH_TEST);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glEnable(GL_CULL_FACE);
+
+    // build and compile shaders
+    // -------------------------
+    Shader shader(SHADER_DIR"1.1.depth_testing.vs", SHADER_DIR"1.1.depth_testing.fs");
+    //Shader shaderSingleColor(SHADER_DIR"1.1.depth_testing.vs", SHADER_DIR"2.stencil_single_color.fs");
+
+    // set up the vertices 
+    // set up vertex data (and buffer(s)) and configure vertex attributes
+    // ------------------------------------------------------------------
+    // set up vertex data (and buffer(s)) and configure vertex attributes
+    // ------------------------------------------------------------------
+    float vertices[] = {
+        // back face
+        -0.5f, -0.5f, -0.5f, 0.0f, 0.0f, // bottom-left
+        0.5f, 0.5f, -0.5f, 1.0f, 1.0f, // top-right
+        0.5f, -0.5f, -0.5f, 1.0f, 0.0f, // bottom-right
+        0.5f, 0.5f, -0.5f, 1.0f, 1.0f, // top-right
+        -0.5f, -0.5f, -0.5f, 0.0f, 0.0f, // bottom-left
+        -0.5f, 0.5f, -0.5f, 0.0f, 1.0f, // top-left
+        // front face
+        -0.5f, -0.5f, 0.5f, 0.0f, 0.0f, // bottom-left
+        0.5f, -0.5f, 0.5f, 1.0f, 0.0f, // bottom-right
+        0.5f, 0.5f, 0.5f, 1.0f, 1.0f, // top-right
+        0.5f, 0.5f, 0.5f, 1.0f, 1.0f, // top-right
+        -0.5f, 0.5f, 0.5f, 0.0f, 1.0f, // top-left
+        -0.5f, -0.5f, 0.5f, 0.0f, 0.0f, // bottom-left
+        // left face
+        -0.5f, 0.5f, 0.5f, 1.0f, 0.0f, // top-right
+        -0.5f, 0.5f, -0.5f, 1.0f, 1.0f, // top-left
+        -0.5f, -0.5f, -0.5f, 0.0f, 1.0f, // bottom-left
+        -0.5f, -0.5f, -0.5f, 0.0f, 1.0f, // bottom-left
+        -0.5f, -0.5f, 0.5f, 0.0f, 0.0f, // bottom-right
+        -0.5f, 0.5f, 0.5f, 1.0f, 0.0f, // top-right
+        // right face
+        0.5f, 0.5f, 0.5f, 1.0f, 0.0f, // top-left
+        0.5f, -0.5f, -0.5f, 0.0f, 1.0f, // bottom-right
+        0.5f, 0.5f, -0.5f, 1.0f, 1.0f, // top-right
+        0.5f, -0.5f, -0.5f, 0.0f, 1.0f, // bottom-right
+        0.5f, 0.5f, 0.5f, 1.0f, 0.0f, // top-left
+        0.5f, -0.5f, 0.5f, 0.0f, 0.0f, // bottom-left
+        // bottom face
+        -0.5f, -0.5f, -0.5f, 0.0f, 1.0f, // top-right
+        0.5f, -0.5f, -0.5f, 1.0f, 1.0f, // top-left
+        0.5f, -0.5f, 0.5f, 1.0f, 0.0f, // bottom-left
+        0.5f, -0.5f, 0.5f, 1.0f, 0.0f, // bottom-left
+        -0.5f, -0.5f, 0.5f, 0.0f, 0.0f, // bottom-right
+        -0.5f, -0.5f, -0.5f, 0.0f, 1.0f, // top-right
+        // top face
+        -0.5f, 0.5f, -0.5f, 0.0f, 1.0f, // top-left
+        0.5f, 0.5f, 0.5f, 1.0f, 0.0f, // bottom-right
+        0.5f, 0.5f, -0.5f, 1.0f, 1.0f, // top-right
+        0.5f, 0.5f, 0.5f, 1.0f, 0.0f, // bottom-right
+        -0.5f, 0.5f, -0.5f, 0.0f, 1.0f, // top-left
+        -0.5f, 0.5f, 0.5f, 0.0f, 0.0f // bottom-left
+    };
+    float planeVertices[] = {
+        // positions          // texture Coords (note we set these higher than 1 (together with GL_REPEAT as texture wrapping mode). this will cause the floor texture to repeat)
+         5.0f, -0.5f,  5.0f,  2.0f, 0.0f,
+        -5.0f, -0.5f,  -5.0f,  0.0f, 0.0f,
+        -5.0f, -0.5f, 5.0f,  0.0f, 2.0f,
+
+         5.0f, -0.5f,  5.0f,  2.0f, 0.0f,
+         5.0f, -0.5f, -5.0f,  0.0f, 2.0f,
+         -5.0f, -0.5f, -5.0f,  2.0f, 2.0f								
+    };
+    float quadVertices[] = {
+        // positions // texCoords
+        -1.0f, 1.0f, 0.0f, 1.0f,
+        -1.0f, -1.0f, 0.0f, 0.0f,
+        1.0f, -1.0f, 1.0f, 0.0f,
+        -1.0f, 1.0f, 0.0f, 1.0f,
+        1.0f, -1.0f, 1.0f, 0.0f,
+        1.0f, 1.0f, 1.0f, 1.0f
+    };
+    
+    
+   // draw in wireframe
+    //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    // Framebuffer
+    // Create Framebuffer
+    unsigned int fbo;
+    glGenFramebuffers(1,&fbo);
+    glBindFramebuffer(GL_FRAMEBUFFER,fbo);
+
+    // Create textture to bind to fbo
+    // generate texture
+    unsigned int texColorBuffer;
+    glGenTextures(1, &texColorBuffer);
+    glBindTexture(GL_TEXTURE_2D, texColorBuffer);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 800, 600, 0, GL_RGB,
+    GL_UNSIGNED_BYTE, NULL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR );
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    // attach it to currently bound framebuffer object
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
+        texColorBuffer, 0);
+    // Create rbo to bind to fbo
+    unsigned int rbo;
+    glGenRenderbuffers(1, &rbo);
+    glBindRenderbuffer(GL_RENDERBUFFER, rbo);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, 800, 600);
+    glBindRenderbuffer(GL_RENDERBUFFER, 0);
+
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT,
+        GL_RENDERBUFFER, rbo);
+    if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+        std::cout << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!" <<std::endl;
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    // VAO & VBO init for lightSpotShader
+    VAO cubeVao;
+    VBO cubeVbo;
+    cubeVao.load();
+    cubeVbo.load(vertices,sizeof(vertices));
+    cubeVao.bind();
+    cubeVbo.bind();
+    int stride { 5*sizeof(float)};
+    cubeVao.setAttribute(0,3,stride,0);
+    cubeVao.setAttribute(1, 2, stride, 3*sizeof(float));
+    // plane VAO
+    VAO planeVao;
+    VBO planeVbo;
+    planeVao.load();
+    planeVbo.load(planeVertices,sizeof(planeVertices));
+    planeVao.bind();
+    planeVao.setAttribute(0,3,stride, 0);
+    planeVao.setAttribute(1,2,stride, 3*sizeof(float));
+    // Quad VAO
+    VAO quadVao;
+    VBO quadVbo;
+    quadVao.load();
+    quadVbo.load(quadVertices,sizeof(quadVertices));
+    quadVao.bind();
+    quadVbo.bind();
+    stride = sizeof(float)*4;
+    quadVao.setAttribute(0,2, stride, 0);
+    quadVao.setAttribute(1,2,stride,2*sizeof(float));
+    // load textures
+    // -------------
+    unsigned int cubeTexture  = Callback::loadTexture(FileSystem::getPath("resources/textures/marble.jpg").c_str());
+    unsigned int floorTexture = Callback::loadTexture(FileSystem::getPath("resources/textures/metal.png").c_str());
+     // shader configuration
+    // --------------------
+    shader.use();
+    shader.setInt("texture1", 0);
+    // render loop
+    // -----------
+    while (!glfwWindowShouldClose(window))
+    {
+        // per-frame time logic
+        // --------------------
+        float currentFrame = static_cast<float>(glfwGetTime());
+        state.deltaTime = currentFrame - state.lastFrame;
+        state.lastFrame = currentFrame;
+
+        // input
+        // -----
+        Callback::processInput(window,state);
+
+        // render
+        // ------
+        // first pass
+        glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+        glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        glEnable(GL_DEPTH_TEST);
+        DrawScene();
+        // second pass
+        glBindFramebuffer(GL_FRAMEBUFFER, 0); // back to default
+        glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT);
+        
+        screenShader.use();
+        glBindVertexArray(quadVAO);
+        glDisable(GL_DEPTH_TEST);
+        glBindTexture(GL_TEXTURE_2D, textureColorbuffer);
+        glDrawArrays(GL_TRIANGLES, 0, 6);       
+
+        // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
+        // -------------------------------------------------------------------------------
+        glfwSwapBuffers(window);
+        glfwPollEvents();
+    }
+    // glfw: terminate, clearing all previously allocated GLFW resources.
+    // ------------------------------------------------------------------
+    glfwTerminate();
+    glDeleteFramebuffers(1, &fbo);
+    return 0;
+}
+

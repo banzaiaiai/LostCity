@@ -7,6 +7,12 @@ add_executable(app ${APP_SOURCES})
 
 target_include_directories(app PRIVATE ${PROJECT_SOURCE_DIR}/include)
 target_link_libraries(app PRIVATE glfw glad glm::glm)
+#Pour Assimp
+# Trouver assimp
+find_package(assimp REQUIRED)
+# Lier assimp à ton exécutable
+target_link_libraries(app PRIVATE assimp::assimp)
+
 
 # Warnings selon le compilateur
 if(MSVC)
@@ -26,3 +32,5 @@ add_dependencies(app copy_shaders)
 
 # Chemin absolu accessible dans le code C++
 target_compile_definitions(app PRIVATE SHADER_DIR="${SHADER_OUT_DIR}/")
+# Racine du projet, accessible dans le code C++
+target_compile_definitions(app PRIVATE PROJECT_ROOT_DIR="${PROJECT_SOURCE_DIR}")
