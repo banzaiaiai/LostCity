@@ -13,7 +13,8 @@ find_package(assimp REQUIRED)
 # Lier assimp à ton exécutable
 target_link_libraries(app PRIVATE assimp::assimp)
 
-
+target_compile_definitions(app PRIVATE
+    SHADER_DIR="${CMAKE_SOURCE_DIR}/shaders/")
 # Warnings selon le compilateur
 if(MSVC)
     target_compile_options(app PRIVATE /W4)

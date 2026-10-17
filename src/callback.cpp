@@ -15,6 +15,8 @@ AppState &getState(GLFWwindow *window) {
 
 namespace Callback {
 
+AppState state{};
+
 void processInput(GLFWwindow *window, AppState &s) {
 	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
 		glfwSetWindowShouldClose(window, true);
@@ -26,6 +28,14 @@ void processInput(GLFWwindow *window, AppState &s) {
 		s.camera.ProcessKeyboard(LEFT, s.deltaTime);
 	if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
 		s.camera.ProcessKeyboard(RIGHT, s.deltaTime);
+	if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS &&
+	    !state.gammaKeyPressed) {
+		state.gammaEnabled = !state.gammaEnabled;
+		state.gammaKeyPressed = true;
+	}
+	if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_RELEASE) {
+		state.gammaKeyPressed = false;
+	}
 }
 
 void framebuffer_size_callback(GLFWwindow *, int width, int height) {
@@ -55,45 +65,44 @@ void scroll_callback(GLFWwindow *window, double, double yoffset) {
 }
 // utility function for loading a 2D texture from file
 // ---------------------------------------------------
-unsigned int loadTexture(char const *path) {
+// utility function for loading a 2D texture from file
+// ---------------------------------------------------
+unsigned int loadTexture(char const *path, bool gammaCorrection) {
 	unsigned int textureID;
 	glGenTextures(1, &textureID);
 
 	int width, height, nrComponents;
 	unsigned char *data = stbi_load(path, &width, &height, &nrComponents, 0);
 	if (data) {
-		GLenum format = GL_RGB;  // valeur par défaut (sinon non initialisée)
-		if (nrComponents == 1) format = GL_RED;
-		else if (nrComponents == 3) format = GL_RGB;
-		else if (nrComponents == 4) format = GL_RGBA;
-
-		glPixelStorei(GL_UNPACK_ALIGNMENT,
-		              1);  // évite une image déformée/crash si largeur*3 n'est
-		                   // pas multiple de 4
+		GLenum internalFormat;
+		GLenum dataFormat;
+		if (nrComponents == 1) {
+			internalFormat = dataFormat = GL_RED;
+		} else if (nrComponents == 3) {
+			internalFormat = gammaCorrection ? GL_SRGB : GL_RGB;
+			dataFormat = GL_RGB;
+		} else if (nrComponents == 4) {
+			internalFormat = gammaCorrection ? GL_SRGB_ALPHA : GL_RGBA;
+			dataFormat = GL_RGBA;
+		}
 
 		glBindTexture(GL_TEXTURE_2D, textureID);
-		glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format,
-		             GL_UNSIGNED_BYTE, data);
+		glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, width, height, 0,
+		             dataFormat, GL_UNSIGNED_BYTE, data);
 		glGenerateMipmap(GL_TEXTURE_2D);
 
-		glTexParameteri(
-		    GL_TEXTURE_2D, GL_TEXTURE_WRAP_S,
-		    format == GL_RGBA
-		        ? GL_CLAMP_TO_EDGE
-				: GL_REPEAT);  // for this tutorial: use GL_CLAMP_TO_EDGE to
-				               // prevent semi-transparent borders. Due to
-				               // interpolation it takes texels from next repeat
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T,
-		                format == GL_RGBA ? GL_CLAMP_TO_EDGE : GL_REPEAT);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,
 		                GL_LINEAR_MIPMAP_LINEAR);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
 		stbi_image_free(data);
 	} else {
-		std::cout << "Texture failed to load at path: " << path << " : "
-		          << stbi_failure_reason() << std::endl;
+		std::cout << "Texture failed to load at path: " << path << std::endl;
+		stbi_image_free(data);
 	}
+
 	return textureID;
 }
 unsigned int loadCubemap(std::vector<std::string> faces) {

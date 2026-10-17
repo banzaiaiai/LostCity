@@ -30,7 +30,8 @@ GLFWwindow *window;
 int main() {
 	// glfw: initialize and configure
 	// ------------------------------
-	if (!glfwInit()) return -1;
+	if (!glfwInit())
+		return -1;
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
@@ -73,11 +74,12 @@ int main() {
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glEnable(GL_CULL_FACE);
+
 	// build and compile shaders
 	// -------------------------
 	Shader shader(SHADER_DIR "1.1.depth_testing.vs",
 	              SHADER_DIR "1.1.depth_testing.fs");
-	Shader screenShader(SHADER_DIR "quade.vert", SHADER_DIR "quade.frag");
+	Shader skyboxShader(SHADER_DIR "cube.vert", SHADER_DIR "cube.frag");
 	// Shader shaderSingleColor(SHADER_DIR"1.1.depth_testing.vs",
 	// SHADER_DIR"2.stencil_single_color.fs");
 
@@ -86,6 +88,7 @@ int main() {
 	// ------------------------------------------------------------------
 	// set up vertex data (and buffer(s)) and configure vertex attributes
 	// ------------------------------------------------------------------
+	// clang-format off
 	float vertices[] = {
 	    // back face
 	    -0.5f, -0.5f, -0.5f, 0.0f, 0.0f,  // bottom-left
@@ -139,16 +142,6 @@ int main() {
 
 	    5.0f, -0.5f, 5.0f,  2.0f,  0.0f,  5.0f,  -0.5f, -5.0f,
 	    0.0f, 2.0f,  -5.0f, -0.5f, -5.0f, 2.0f,  2.0f};
-	float quadVertices[] = {
-	    // vertex attributes for a quad that fills the entire screen in
-	    // Normalized Device Coordinates. NOTE that this plane is now much
-	    // smaller and at the top of the screen
-	    // positions   // texCoords
-	    -0.4f, 1.0f, 0.0f, 1.0f, -0.4f, 0.6f,
-	    0.0f,  0.0f, 0.4f, 0.6f, 1.0f,  0.0f,
-
-	    -0.4f, 1.0f, 0.0f, 1.0f, 0.4f,  0.6f,
-	    1.0f,  0.0f, 0.4f, 1.0f, 1.0f,  1.0f};
 	float transparentVertices[] = {
 	    // positions         // texture Coords (swapped y coordinates because
 	    // texture is flipped upside down)
@@ -157,7 +150,51 @@ int main() {
 
 	    0.0f, 0.5f, 0.0f, 0.0f,  0.0f, 1.0f, -0.5f, 0.0f,
 	    1.0f, 1.0f, 1.0f, 0.5f,  0.0f, 1.0f, 0.0f};
+	float skyboxVertices[] = {
+        // positions          
+        -1.0f,  1.0f, -1.0f,
+        -1.0f, -1.0f, -1.0f,
+         1.0f, -1.0f, -1.0f,
+         1.0f, -1.0f, -1.0f,
+        1.0f,  1.0f, -1.0f,
+        -1.0f,  1.0f, -1.0f,
 
+        -1.0f, -1.0f,  1.0f,
+        -1.0f, -1.0f, -1.0f,
+        -1.0f,  1.0f, -1.0f,
+        -1.0f,  1.0f, -1.0f,
+        -1.0f,  1.0f,  1.0f,
+        -1.0f, -1.0f,  1.0f,
+
+         1.0f, -1.0f, -1.0f,
+         1.0f, -1.0f,  1.0f,
+         1.0f,  1.0f,  1.0f,
+         1.0f,  1.0f,  1.0f,
+         1.0f,  1.0f, -1.0f,
+         1.0f, -1.0f, -1.0f,
+
+        -1.0f, -1.0f,  1.0f,
+        -1.0f,  1.0f,  1.0f,
+         1.0f,  1.0f,  1.0f,
+         1.0f,  1.0f,  1.0f,
+         1.0f, -1.0f,  1.0f,
+        -1.0f, -1.0f,  1.0f,
+
+        -1.0f,  1.0f, -1.0f,
+         1.0f,  1.0f, -1.0f,
+         1.0f,  1.0f,  1.0f,
+         1.0f,  1.0f,  1.0f,
+        -1.0f,  1.0f,  1.0f,
+        -1.0f,  1.0f, -1.0f,
+
+        -1.0f, -1.0f, -1.0f,
+        -1.0f, -1.0f,  1.0f,
+         1.0f, -1.0f, -1.0f,
+         1.0f, -1.0f, -1.0f,
+        -1.0f, -1.0f,  1.0f,
+         1.0f, -1.0f,  1.0f,
+    };
+	// clang-format on
 	// VAO & VBO init for lightSpotShader
 	VAO cubeVao;
 	VBO cubeVbo;
@@ -194,16 +231,16 @@ int main() {
 	vegetation.push_back(glm::vec3(0.0f, 0.0f, 0.7f));
 	vegetation.push_back(glm::vec3(-0.3f, 0.0f, -2.3f));
 	vegetation.push_back(glm::vec3(0.5f, 0.0f, -0.6f));
-	// Quad VAO
-	VAO quadVao;
-	VBO quadVbo;
-	quadVao.load();
-	quadVbo.load(quadVertices, sizeof(quadVertices));
-	quadVao.bind();
-	quadVbo.bind();
-	stride = sizeof(float) * 4;
-	quadVao.setAttribute(0, 2, stride, 0);
-	quadVao.setAttribute(1, 2, stride, 2 * sizeof(float));
+	// Skybox VAO
+	VAO skyboxVao;
+	VBO skyboxVbo;
+	skyboxVao.load();
+	skyboxVbo.load(skyboxVertices, sizeof(skyboxVertices));
+	skyboxVao.bind();
+	skyboxVbo.bind();
+	stride = sizeof(float) * 3;
+	skyboxVao.setAttribute(0, 3, stride, 0);
+
 	// load textures
 	// -------------
 	unsigned int cubeTexture = Callback::loadTexture(
@@ -214,52 +251,21 @@ int main() {
 	    FileSystem::getPath("resources/textures/window.png").c_str());
 	// load cube texture
 	// --------------------
-	unsigned int textureID;
-	glGenTextures(1, &textureID);
-	glBindTexture(GL_TEXTURE_CUBE_MAP, textureID);
-	
-	// shader configuration
+	vector<std::string> faces{
+	    FileSystem::getPath("resources/textures/skybox/right.jpg"),
+	    FileSystem::getPath("resources/textures/skybox/left.jpg"),
+	    FileSystem::getPath("resources/textures/skybox/top.jpg"),
+	    FileSystem::getPath("resources/textures/skybox/bottom.jpg"),
+	    FileSystem::getPath("resources/textures/skybox/front.jpg"),
+	    FileSystem::getPath("resources/textures/skybox/back.jpg")};
+	unsigned int cubemapTexture =
+	    Callback::loadCubemap(faces);  // shader configuration
 	// --------------------
 	shader.use();
 	shader.setInt("texture1", 0);
 
-	screenShader.use();
-	screenShader.setInt("screenTexture", 0);
-	// draw in wireframe
-	// glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-	// Framebuffer
-	// Create Framebuffer
-	unsigned int fbo;
-	glGenFramebuffers(1, &fbo);
-	glBindFramebuffer(GL_FRAMEBUFFER, fbo);
-
-	// Create textture to bind to fbo
-	// create a color attachment texture
-	unsigned int textureColorbuffer;
-	glGenTextures(1, &textureColorbuffer);
-	glBindTexture(GL_TEXTURE_2D, textureColorbuffer);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, SCR_WIDTH, SCR_HEIGHT, 0, GL_RGB,
-	             GL_UNSIGNED_BYTE, NULL);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
-	                       textureColorbuffer, 0);
-	// create a renderbuffer object for depth and stencil attachment (we won't
-	// be sampling these)
-	unsigned int rbo;
-	glGenRenderbuffers(1, &rbo);
-	glBindRenderbuffer(GL_RENDERBUFFER, rbo);
-	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, SCR_WIDTH,
-	                      SCR_HEIGHT);  // use a single renderbuffer object for
-	                                    // both a depth AND stencil buffer.
-	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT,
-	                          GL_RENDERBUFFER, rbo);  // now actually attach it
-	// now that we actually created the framebuffer and added all attachments we
-	// want to check if it is actually complete now
-	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
-		cout << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!" << endl;
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
+	skyboxShader.use();
+	skyboxShader.setInt("skybox", 0);
 	// render loop
 	// -----------
 	while (!glfwWindowShouldClose(window)) {
@@ -276,28 +282,17 @@ int main() {
 		// render
 		// ------
 		// first pass
-		glBindFramebuffer(GL_FRAMEBUFFER, fbo);
-		glEnable(GL_DEPTH_TEST);
 		glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-		// draw objects
+		// draw scene as normal
 		shader.use();
 		glm::mat4 model = glm::mat4(1.0f);
-		state.camera.Yaw +=
-		    180.0f;  // rotate the camera's yaw 180 degrees around
-		state.camera.ProcessMouseMovement(
-		    0, 0,
-		    false);  // call this to make sure it updates its camera vectors,
-			         // note that we disable pitch constrains for this specific
-			         // case (otherwise we can't reverse camera's pitch values)
 		glm::mat4 view = state.camera.GetViewMatrix();
-		state.camera.Yaw -=
-		    180.0f;  // reset it back to its original orientation
-		state.camera.ProcessMouseMovement(0, 0, true);
 		glm::mat4 projection = glm::perspective(
 		    glm::radians(state.camera.Zoom),
 		    (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
+		shader.setMat4("model", model);
 		shader.setMat4("view", view);
 		shader.setMat4("projection", projection);
 		// cubes
@@ -332,69 +327,31 @@ int main() {
 			shader.setMat4("model", model);
 			glDrawArrays(GL_TRIANGLES, 0, 6);
 		}
-
-		glBindVertexArray(0);
-
-		// second pass
-		glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
-		glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-		model = glm::mat4(1.0f);
-		view = state.camera.GetViewMatrix();
-		shader.setMat4("view", view);
-
-		// cubes
-		cubeVao.bind();
+		// draw skybox as last
+		glDepthFunc(
+		    GL_LEQUAL);  // change depth function so depth test passes when
+			             // values are equal to depth buffer's content
+		skyboxShader.use();
+		view = glm::mat4(glm::mat3(
+		    state.camera
+		        .GetViewMatrix()));  // remove translation from the view matrix
+		skyboxShader.setMat4("view", view);
+		skyboxShader.setMat4("projection", projection);
+		// skybox cube
+		skyboxVao.bind();
 		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, cubeTexture);
-		model = glm::translate(model, glm::vec3(-1.0f, 0.0f, -1.0f));
-		shader.setMat4("model", model);
+		glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
 		glDrawArrays(GL_TRIANGLES, 0, 36);
-		model = glm::mat4(1.0f);
-		model = glm::translate(model, glm::vec3(2.0f, 0.0f, 0.0f));
-		shader.setMat4("model", model);
-		glDrawArrays(GL_TRIANGLES, 0, 36);
-		// floor
-		planeVao.bind();
-		glBindTexture(GL_TEXTURE_2D, floorTexture);
-		model = glm::mat4(1.0f);
-		shader.setMat4("model", model);
-		glDrawArrays(GL_TRIANGLES, 0, 6);
-		// vegetation
-		for (unsigned int i = 0; i < vegetation.size(); i++) {
-			float distance = glm::length(state.camera.Position - vegetation[i]);
-			sorted[distance] = vegetation[i];
-		}
-		grassVao.bind();
-		glBindTexture(GL_TEXTURE_2D, grassTexture);
-		for (std::map<float, glm::vec3>::reverse_iterator it = sorted.rbegin();
-		     it != sorted.rend(); ++it) {
-			model = glm::mat4(1.0f);
-			model = glm::translate(model, it->second);
-			shader.setMat4("model", model);
-			glDrawArrays(GL_TRIANGLES, 0, 6);
-		}
-
 		glBindVertexArray(0);
-
-		glDisable(GL_DEPTH_TEST);
-		screenShader.use();
-		quadVao.bind();
-		glDisable(GL_DEPTH_TEST);
-		glBindTexture(GL_TEXTURE_2D, textureColorbuffer);
-		glDrawArrays(GL_TRIANGLES, 0, 6);
-
-		// glfw: swap buffers and poll IO events (keys pressed/released, mouse
-		// moved etc.)
+		glDepthFunc(GL_LESS);  // set depth function back to default
+		// glfw: swap buffers and poll IO events (keys pressed/released,
+		// mouse moved etc.)
 		// -------------------------------------------------------------------------------
 		glfwSwapBuffers(window);
 		glfwPollEvents();
 	}
 	// glfw: terminate, clearing all previously allocated GLFW resources.
 	// ------------------------------------------------------------------
-	glDeleteFramebuffers(1, &fbo);
 	glfwTerminate();
 
 	return 0;

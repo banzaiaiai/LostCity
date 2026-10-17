@@ -13,33 +13,39 @@
 using namespace std;
 
 struct Vertex {
-    glm::vec3 Position;
-    glm::vec3 Normal;
-    glm::vec2 TexCoords;
+	glm::vec3 Position;
+	glm::vec3 Normal;
+	glm::vec2 TexCoords;
 };
 
 struct Texture {
-    string type;
-    string path;
-    unsigned int id;
-   };
-
-class Mesh {
-public: // Constructor 
-    Mesh(std::vector<Vertex> vertices, vector<unsigned int> indices,
-         vector<Texture> textures);
-public : // mesh data
-    vector<Vertex> vertices;
-    vector<unsigned int> indices;
-    vector<Texture> textures;
-public : // mesh specifi method
-    void Draw(Shader &shader);
-private:
-    // render data
-    VAO Vao;
-    VBO Vbo;
-    unsigned int Ebo {0};
-    void setupMesh();
+	string type;
+	string path;
+	unsigned int id;
 };
 
-#endif 
+class Mesh {
+  public:  // Constructor
+	Mesh(std::vector<Vertex> vertices, vector<unsigned int> indices,
+	     vector<Texture> textures);
+
+  public:  // mesh data
+	vector<Vertex> vertices;
+	vector<unsigned int> indices;
+	vector<Texture> textures;
+
+  public:  // mesh specifi method
+	void Draw(Shader &shader);
+
+  public:  // data
+	VAO Vao;
+
+  private:
+	// render data
+
+	VBO Vbo;
+	unsigned int Ebo{0};
+	void setupMesh();
+};
+
+#endif
