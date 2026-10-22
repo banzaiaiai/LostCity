@@ -11,11 +11,14 @@ out VS_OUT {
 
 uniform mat4 projection;
 uniform mat4 view;
+uniform mat4 model;
 
 void main()
 {
-    vs_out.FragPos = aPos;
-    vs_out.Normal = aNormal;
+    vec4 worldPos = model * vec4(aPos, 1.0);
+    vs_out.FragPos = worldPos.xyz;
+    // matrice normale : garde la normale correcte après rotation / échelle
+    vs_out.Normal = mat3(transpose(inverse(model))) * aNormal;
     vs_out.TexCoords = aTexCoords;
-    gl_Position = projection * view * vec4(aPos, 1.0);
+    gl_Position = projection * view * worldPos;
 }

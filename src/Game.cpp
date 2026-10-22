@@ -2,37 +2,16 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include "Game.h"
-#include "callback.h"  // Callback::loadTexture (temporaire, à déplacer dans Texture)
+#include "glm/ext/matrix_transform.hpp"
+#include "glm/ext/vector_float3.hpp"
+#include "mesh.h"
+#include "meshFactory.h"
 #include "filesystem.h"
-#include "shader.h"
 #include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtc/type_ptr.hpp>
 #include <iostream>
 #include <string>
+#include <vector>
 // clang-format on
-
-// Idéalement défini par CMake (target_compile_definitions).
-#ifndef SHADER_DIR
-#define SHADER_DIR "shaders/"
-#endif
-
-namespace {
-
-// clang-format off
-// positions            // normals         // texcoords
-constexpr float kPlaneVertices[] = {
-     10.0f, -0.5f,  10.0f,  0.0f, 1.0f, 0.0f,  10.0f,  0.0f,
-    -10.0f, -0.5f,  10.0f,  0.0f, 1.0f, 0.0f,   0.0f,  0.0f,
-    -10.0f, -0.5f, -10.0f,  0.0f, 1.0f, 0.0f,   0.0f, 10.0f,
-
-     10.0f, -0.5f,  10.0f,  0.0f, 1.0f, 0.0f,  10.0f,  0.0f,
-    -10.0f, -0.5f, -10.0f,  0.0f, 1.0f, 0.0f,   0.0f, 10.0f,
-     10.0f, -0.5f, -10.0f,  0.0f, 1.0f, 0.0f,  10.0f, 10.0f};
-// clang-format on
-
-constexpr int kLightCount = 4;
-
-}  // namespace
 
 Game::Game() = default;
 
@@ -74,13 +53,12 @@ bool Game::init() {
 
 	// La taille du framebuffer peut différer de celle de la fenêtre (HiDPI).
 	glfwGetFramebufferSize(m_window, &m_width, &m_height);
-	glViewport(0, 0, m_width, m_height);
+	m_renderer.setViewport(m_width, m_height);
 	updateProjection();
 
 	registerCallbacks();
 	glfwSetInputMode(m_window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
-	setupGlState();
 	loadResources();
 	return true;
 }
@@ -110,55 +88,29 @@ Game *Game::fromWindow(GLFWwindow *window) {
 	return static_cast<Game *>(glfwGetWindowUserPointer(window));
 }
 
-void Game::setupGlState() {
-	glEnable(GL_DEPTH_TEST);
-	glEnable(GL_BLEND);
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-}
-
 void Game::loadResources() {
-	// --- shader ---
-	m_shader = std::make_unique<Shader>(SHADER_DIR "1.1.depth_testing.vs",
-	                                    SHADER_DIR "1.1.depth_testing.fs");
+	// --- renderer (shader + états GL) ---
+	m_renderer.init(SHADER_DIR "1.1.depth_testing.vs",
+	                SHADER_DIR "1.1.depth_testing.fs");
 
-	// --- plan (VAO / VBO) ---
-	glGenVertexArrays(1, &m_planeVAO);
-	glGenBuffers(1, &m_planeVBO);
-	glBindVertexArray(m_planeVAO);
-	glBindBuffer(GL_ARRAY_BUFFER, m_planeVBO);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(kPlaneVertices), kPlaneVertices,
-	             GL_STATIC_DRAW);
-	const GLsizei stride = 8 * sizeof(float);
-	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride,
-	                      reinterpret_cast<void *>(0));
-	glEnableVertexAttribArray(1);
-	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, stride,
-	                      reinterpret_cast<void *>(3 * sizeof(float)));
-	glEnableVertexAttribArray(2);
-	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, stride,
-	                      reinterpret_cast<void *>(6 * sizeof(float)));
-	glBindVertexArray(0);
+	// --- lumières (envoyées une seule fois) ---
+	m_renderer.setLights({
+	    {glm::vec3(-3.0f, 2.0f, 0.0f), glm::vec3(0.25f)},
+	    {glm::vec3(-1.0f, 2.0f, 0.0f), glm::vec3(0.50f)},
+	    {glm::vec3(1.0f, 2.0f, 0.0f), glm::vec3(0.75f)},
+	    {glm::vec3(3.0f, 2.0f, 0.0f), glm::vec3(1.00f)},
+	});
 
-	// --- textures ---
-	const std::string woodPath =
-	    FileSystem::getPath("resources/textures/wood.png");
-	m_floorTex = Callback::loadTexture(woodPath.c_str(), false);
-	m_floorTexGamma = Callback::loadTexture(woodPath.c_str(), true);
-
-	// --- uniforms constants : envoyés une seule fois ---
-	const glm::vec3 lightPositions[kLightCount] = {
-	    glm::vec3(-3.0f, 0.0f, 0.0f), glm::vec3(-1.0f, 0.0f, 0.0f),
-	    glm::vec3(1.0f, 0.0f, 0.0f), glm::vec3(3.0f, 0.0f, 0.0f)};
-	const glm::vec3 lightColors[kLightCount] = {
-	    glm::vec3(0.25f), glm::vec3(0.50f), glm::vec3(0.75f), glm::vec3(1.00f)};
-
-	m_shader->use();
-	m_shader->setInt("floorTexture", 0);
-	glUniform3fv(glGetUniformLocation(m_shader->ID, "lightPositions"),
-	             kLightCount, glm::value_ptr(lightPositions[0]));
-	glUniform3fv(glGetUniformLocation(m_shader->ID, "lightColors"), kLightCount,
-	             glm::value_ptr(lightColors[0]));
+	// --- sol : un plan 20x20 abaissé de 0.5, texture répétée 10x10 ---
+	// Game::loadResources()
+	const Texture wood = m_renderer.loadTexture(
+	    FileSystem::getPath("resources/textures/wood.png"));
+	const Texture wall = m_renderer.loadTexture(FileSystem::getPath(
+	    "resources/textures/metal.png"));  // votre texture de mur
+	std::vector<Texture> textures{wall, wood};
+	m_room =
+	    std::make_unique<Mesh>(MeshFactory::room(20.0f, 20.0f, 3.0f, textures));
+	m_roomModel = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 }
 
 // ---------------------------------------------------------------------------
@@ -166,7 +118,7 @@ void Game::loadResources() {
 // ---------------------------------------------------------------------------
 
 void Game::run() {
-	if (!m_window || !m_shader) {
+	if (!m_window || !m_renderer.isReady()) {
 		std::cerr << "Game::run() appelé sans init() réussi\n";
 		return;
 	}
@@ -209,21 +161,8 @@ void Game::update(float /*dt*/) {
 }
 
 void Game::render() {
-	glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-	m_shader->use();
-	m_shader->setMat4("projection", m_projection);
-	m_shader->setMat4("view", m_camera.GetViewMatrix());
-	m_shader->setVec3("viewPos", m_camera.Position);
-	m_shader->setInt("gamma", m_gammaEnabled);
-	m_shader->setInt("blinn", m_blinn);
-
-	// sol
-	glBindVertexArray(m_planeVAO);
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, m_gammaEnabled ? m_floorTexGamma : m_floorTex);
-	glDrawArrays(GL_TRIANGLES, 0, 6);
+	m_renderer.beginFrame(m_camera, m_projection);
+	m_renderer.draw(*m_room, m_roomModel);
 }
 
 // ---------------------------------------------------------------------------
@@ -235,7 +174,7 @@ void Game::onResize(int width, int height) {
 		return;  // fenêtre minimisée
 	m_width = width;
 	m_height = height;
-	glViewport(0, 0, m_width, m_height);
+	m_renderer.setViewport(m_width, m_height);
 	updateProjection();
 }
 
@@ -270,12 +209,12 @@ void Game::onKey(int key, int action) {
 		glfwSetWindowShouldClose(m_window, GLFW_TRUE);
 		break;
 	case GLFW_KEY_B:
-		m_blinn = !m_blinn;
-		std::cout << (m_blinn ? "Blinn-Phong" : "Phong") << '\n';
+		m_renderer.setBlinn(!m_renderer.blinn());
+		std::cout << (m_renderer.blinn() ? "Blinn-Phong" : "Phong") << '\n';
 		break;
 	case GLFW_KEY_G:
-		m_gammaEnabled = !m_gammaEnabled;
-		std::cout << (m_gammaEnabled ? "Gamma on" : "Gamma off") << '\n';
+		m_renderer.setGamma(!m_renderer.gamma());
+		std::cout << (m_renderer.gamma() ? "Gamma on" : "Gamma off") << '\n';
 		break;
 	default:
 		break;
@@ -298,16 +237,10 @@ void Game::updateProjection() {
 void Game::shutdown() {
 	// 1. ressources GL : le contexte doit encore exister
 	if (m_glReady) {
-		glDeleteVertexArrays(1, &m_planeVAO);
-		glDeleteBuffers(1, &m_planeVBO);
-		glDeleteTextures(1, &m_floorTex);
-		glDeleteTextures(1, &m_floorTexGamma);
-		if (m_shader)
-			glDeleteProgram(m_shader->ID);
-		m_planeVAO = m_planeVBO = m_floorTex = m_floorTexGamma = 0;
+		m_room.release();
+		m_renderer.shutdown();  // shader + textures
 		m_glReady = false;
 	}
-	m_shader.reset();
 
 	// 2. fenêtre + contexte
 	if (m_window) {

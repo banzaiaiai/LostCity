@@ -2,11 +2,12 @@
 #define GAME_H
 
 #include "camera.h"
+#include "mesh.h"
+#include "renderer.h"
 #include <glm/glm.hpp>
 #include <memory>
 
 struct GLFWwindow;
-class Shader;
 
 class Game {
   public:
@@ -31,7 +32,6 @@ class Game {
 
 	// --- initialisation / nettoyage ---
 	void registerCallbacks();
-	void setupGlState();
 	void loadResources();
 	void shutdown();
 
@@ -55,8 +55,6 @@ class Game {
 	// état du jeu
 	Camera m_camera{glm::vec3(0.0f, 0.0f, 3.0f)};
 	glm::mat4 m_projection{1.0f};
-	bool m_blinn{true};
-	bool m_gammaEnabled{false};
 
 	// temps
 	float m_dt{0.0f};
@@ -67,11 +65,13 @@ class Game {
 	float m_lastY{0.0f};
 	bool m_firstMouse{true};
 
-	// ressources GL
-	std::unique_ptr<Shader> m_shader;
-	unsigned int m_planeVAO{0};
-	unsigned int m_planeVBO{0};
-	unsigned int m_floorTex{0};
-	unsigned int m_floorTexGamma{0};
+	// rendu
+	Renderer m_renderer;
+
+	// scène (provisoire : deviendra des Room / Entity)
+	// unique_ptr : un Mesh ne peut être construit qu'une fois le contexte GL
+	// créé.
+	std::unique_ptr<Mesh> m_room;
+	glm::mat4 m_roomModel{1.0f};
 };
 #endif  // !GAME_H
