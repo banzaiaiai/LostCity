@@ -3,6 +3,7 @@
 #include "renderer.h"
 #include "callback.h"  // Callback::loadTexture (temporaire)
 #include "camera.h"
+#include "model.h"
 #include <algorithm>
 #include <glm/gtc/type_ptr.hpp>
 #include <iostream>
@@ -116,4 +117,7 @@ void Renderer::draw(Mesh &mesh, const glm::mat4 &model) {
 	m_shader->use();
 	m_shader->setMat4("model", model);
 	mesh.Draw(*m_shader);  // lie les textures (unité 0..n) puis dessine
+}
+void Renderer::draw(Model &model, const glm::mat4 &transform) {
+	for (Mesh &mesh : model.meshes) draw(mesh, transform);
 }

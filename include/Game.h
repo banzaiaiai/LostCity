@@ -3,6 +3,7 @@
 
 #include "camera.h"
 #include "mesh.h"
+#include "model.h"
 #include "renderer.h"
 #include <glm/glm.hpp>
 #include <memory>
@@ -82,6 +83,8 @@ class Game {
 	// créé.
 	std::unique_ptr<Mesh> m_room;
 	glm::mat4 m_roomModel{1.0f};
+	std::unique_ptr<Model> m_dead_body;
+	glm::mat4 m_deadBodyModel{1.0f};
 
 	// colision
 	std::vector<AABB> m_walls;

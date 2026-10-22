@@ -2,6 +2,7 @@
 #define RENDERER_H
 
 #include "mesh.h"  // Mesh, Texture, Vertex (+ shader.h)
+#include "model.h"
 #include <glm/glm.hpp>
 #include <map>
 #include <memory>
@@ -62,6 +63,7 @@ class Renderer {
 	// --- dessin ---
 	void beginFrame(const Camera &camera, const glm::mat4 &projection);
 	void draw(Mesh &mesh, const glm::mat4 &model = glm::mat4(1.0f));
+	void draw(Model &model, const glm::mat4 &transform = glm::mat4(1.0f));
 
   private:
 	struct TexVariants {

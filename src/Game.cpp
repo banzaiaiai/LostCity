@@ -4,13 +4,16 @@
 #include "Game.h"
 #include "glm/ext/matrix_transform.hpp"
 #include "glm/ext/vector_float3.hpp"
+#include "glm/ext/vector_float4.hpp"
 #include "mesh.h"
 #include "meshFactory.h"
 #include "filesystem.h"
+#include "model.h"
 #include <glm/gtc/matrix_transform.hpp>
 #include <iostream>
 #include <string>
 #include <vector>
+#include <algorithm>
 // clang-format on
 
 namespace {  // constante
@@ -126,6 +129,11 @@ void Game::loadResources() {
 	buildRectColliders();
 	m_eyeHeight = m_roomModel[3].y + c_eyeHeight;  // sol + hauteur des yeux
 	m_camera.Position.y = m_eyeHeight;
+	// load model
+	m_dead_body = std::make_unique<Model>(
+	    FileSystem::getPath("resources/objects/hospital_stuff/dead_body.obj"));
+	m_deadBodyModel = glm::translate(m_deadBodyModel, m_camera.Position);
+	m_deadBodyModel = glm::scale(glm::mat4(1.0f), glm::vec3(0.1f));
 }
 
 // ---------------------------------------------------------------------------
@@ -194,6 +202,9 @@ void Game::update(float /*dt*/) {
 void Game::render() {
 	m_renderer.beginFrame(m_camera, m_projection);
 	m_renderer.draw(*m_room, m_roomModel);
+	// Game.cpp, dans render()
+	if (m_dead_body)
+		m_renderer.draw(*m_dead_body, m_deadBodyModel);
 }
 
 // ---------------------------------------------------------------------------
@@ -266,10 +277,11 @@ void Game::updateProjection() {
 // ---------------------------------------------------------------------------
 
 void Game::shutdown() {
-	// 1. ressources GL : le contexte doit encore exister
+	// 1. resources GL : le contexte doit encore exister
 	if (m_glReady) {
 		m_room.reset();
-		m_renderer.shutdown();  // shader + textures
+		m_dead_body.reset();
+		m_renderer.shutdown();
 		m_glReady = false;
 	}
 
