@@ -8,7 +8,11 @@
 #include <memory>
 
 struct GLFWwindow;
-
+// Rectangle dans le plan XZ (x -> x, y -> z), vu de dessus.
+struct AABB {
+	glm::vec2 min;
+	glm::vec2 max;
+};
 class Game {
   public:
 	Game();
@@ -44,6 +48,11 @@ class Game {
 
 	static Game *fromWindow(GLFWwindow *window);
 
+  private:  // colision
+	void buildRectColliders();
+	void movePlayer(const glm::vec3 &dir, float dt);
+	bool collides(const glm::vec2 &p) const;
+
   private:
 	// fenêtre
 	GLFWwindow *m_window{nullptr};
@@ -73,5 +82,10 @@ class Game {
 	// créé.
 	std::unique_ptr<Mesh> m_room;
 	glm::mat4 m_roomModel{1.0f};
+
+	// colision
+	std::vector<AABB> m_walls;
+	float m_playerRadius{0.3f};
+	float m_eyeHeight{1.6f};
 };
 #endif  // !GAME_H

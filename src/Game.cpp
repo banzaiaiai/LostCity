@@ -13,6 +13,16 @@
 #include <vector>
 // clang-format on
 
+namespace {  // constante
+constexpr float c_eyeHeight = 0.5f;
+}
+namespace {  // var of all the room
+constexpr float kRoomW = 20.0f;
+constexpr float kRoomD = 20.0f;
+constexpr float kRoomH = 3.0f;
+constexpr float kWallThickness = 0.5f;  // épais = pas de "tunneling"
+}  // namespace
+
 Game::Game() = default;
 
 // Le destructeur de Game appelle shutdown() : les ressources GL sont
@@ -58,6 +68,8 @@ bool Game::init() {
 
 	registerCallbacks();
 	glfwSetInputMode(m_window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+	if (glfwRawMouseMotionSupported())
+		glfwSetInputMode(m_window, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
 
 	loadResources();
 	return true;
@@ -108,9 +120,12 @@ void Game::loadResources() {
 	const Texture wall = m_renderer.loadTexture(FileSystem::getPath(
 	    "resources/textures/metal.png"));  // votre texture de mur
 	std::vector<Texture> textures{wall, wood};
-	m_room =
-	    std::make_unique<Mesh>(MeshFactory::room(20.0f, 20.0f, 3.0f, textures));
+	m_room = std::make_unique<Mesh>(
+	    MeshFactory::room(kRoomW, kRoomD, kRoomH, textures));
 	m_roomModel = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+	buildRectColliders();
+	m_eyeHeight = m_roomModel[3].y + c_eyeHeight;  // sol + hauteur des yeux
+	m_camera.Position.y = m_eyeHeight;
 }
 
 // ---------------------------------------------------------------------------
@@ -139,21 +154,37 @@ void Game::run() {
 
 void Game::tickTime() {
 	const float now = static_cast<float>(glfwGetTime());
-	m_dt = now - m_lastFrame;
+	m_dt = std::min(now - m_lastFrame, 0.05f);
 	m_lastFrame = now;
 }
 
 // Entrées "continues" (touche maintenue). Les bascules (B, G, Échap)
 // sont gérées par onKey() pour ne se déclencher qu'une fois par appui.
 void Game::processInput() {
+	// Directions mises à plat : regarder en haut/bas ne ralentit pas la marche.
+	glm::vec3 front = m_camera.Front;
+	front.y = 0.0f;
+	glm::vec3 right = m_camera.Right;
+	right.y = 0.0f;
+	if (glm::length(front) > 1e-4f)
+		front = glm::normalize(front);
+	if (glm::length(right) > 1e-4f)
+		right = glm::normalize(right);
+
+	glm::vec3 wish(0.0f);
 	if (glfwGetKey(m_window, GLFW_KEY_W) == GLFW_PRESS)
-		m_camera.ProcessKeyboard(FORWARD, m_dt);
+		wish += front;
 	if (glfwGetKey(m_window, GLFW_KEY_S) == GLFW_PRESS)
-		m_camera.ProcessKeyboard(BACKWARD, m_dt);
-	if (glfwGetKey(m_window, GLFW_KEY_A) == GLFW_PRESS)
-		m_camera.ProcessKeyboard(LEFT, m_dt);
+		wish -= front;
 	if (glfwGetKey(m_window, GLFW_KEY_D) == GLFW_PRESS)
-		m_camera.ProcessKeyboard(RIGHT, m_dt);
+		wish += right;
+	if (glfwGetKey(m_window, GLFW_KEY_A) == GLFW_PRESS)
+		wish -= right;
+
+	if (glm::length(wish) > 1e-4f)
+		movePlayer(glm::normalize(wish), m_dt);
+
+	m_camera.Position.y = m_eyeHeight;  // hauteur fixe
 }
 
 void Game::update(float /*dt*/) {
@@ -237,7 +268,7 @@ void Game::updateProjection() {
 void Game::shutdown() {
 	// 1. ressources GL : le contexte doit encore exister
 	if (m_glReady) {
-		m_room.release();
+		m_room.reset();
 		m_renderer.shutdown();  // shader + textures
 		m_glReady = false;
 	}
@@ -253,4 +284,48 @@ void Game::shutdown() {
 		glfwTerminate();
 		m_glfwReady = false;
 	}
+}
+void Game::buildRectColliders() {
+	const float hw = kRoomW * 0.5f;
+	const float hd = kRoomD * 0.5f;
+	const float t = kWallThickness;
+	const glm::vec2 c(m_roomModel[3].x,
+	                  m_roomModel[3].z);  // centre de la pièce
+
+	// Les murs sont posés à l'EXTÉRIEUR de la surface intérieure de la pièce.
+	m_walls = {
+	    {c + glm::vec2(-hw - t, -hd - t), c + glm::vec2(hw + t, -hd)},  // nord
+	    {c + glm::vec2(-hw - t, hd), c + glm::vec2(hw + t, hd + t)},    // sud
+	    {c + glm::vec2(-hw - t, -hd), c + glm::vec2(-hw, hd)},          // ouest
+	    {c + glm::vec2(hw, -hd), c + glm::vec2(hw + t, hd)},            // est
+	};
+}
+
+bool Game::collides(const glm::vec2 &p) const {
+	const float r = m_playerRadius;
+	for (const AABB &w : m_walls) {
+		// mur "gonflé" de r : on teste juste un point dans un rectangle
+		if (p.x > w.min.x - r && p.x < w.max.x + r && p.y > w.min.y - r &&
+		    p.y < w.max.y + r)
+			return true;
+	}
+	return false;
+}
+
+void Game::movePlayer(const glm::vec3 &dir, float dt) {
+	const glm::vec2 step =
+	    glm::vec2(dir.x, dir.z) * m_camera.MovementSpeed * dt;
+	glm::vec2 pos(m_camera.Position.x, m_camera.Position.z);
+
+	// Axe X d'abord, puis axe Z : permet de glisser le long des murs.
+	const glm::vec2 tryX(pos.x + step.x, pos.y);
+	if (!collides(tryX))
+		pos = tryX;
+
+	const glm::vec2 tryZ(pos.x, pos.y + step.y);
+	if (!collides(tryZ))
+		pos = tryZ;
+
+	m_camera.Position.x = pos.x;
+	m_camera.Position.z = pos.y;
 }
