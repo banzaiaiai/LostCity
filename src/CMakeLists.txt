@@ -29,6 +29,8 @@ add_custom_target(copy_shaders ALL
             ${PROJECT_SOURCE_DIR}/shaders
             ${SHADER_OUT_DIR}
     COMMENT "Copie des shaders")
+
+
 add_dependencies(app copy_shaders)
 
 # Chemin absolu accessible dans le code C++

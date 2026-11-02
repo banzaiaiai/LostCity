@@ -37,6 +37,9 @@ Game::~Game() { shutdown(); }
 // ---------------------------------------------------------------------------
 
 bool Game::init() {
+#if GLFW_VERSION_MAJOR > 3 || (GLFW_VERSION_MAJOR == 3 && GLFW_VERSION_MINOR >= 4)
+	glfwInitHint(GLFW_PLATFORM, GLFW_PLATFORM_WAYLAND);
+#endif
 	if (!glfwInit()) {
 		std::cerr << "Failed to initialize GLFW\n";
 		return false;
@@ -49,8 +52,13 @@ bool Game::init() {
 #ifdef __APPLE__
 	glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 #endif
+	GLFWmonitor *monitor = glfwGetPrimaryMonitor();
+	const GLFWvidmode *mode = glfwGetVideoMode(monitor);
+	m_width = mode->width;
+	m_height = mode->height;
 
-	m_window = glfwCreateWindow(m_width, m_height, "Game", nullptr, nullptr);
+	m_window = glfwCreateWindow(m_width, m_height, "Game", monitor, nullptr);
+
 	if (!m_window) {
 		std::cerr << "Failed to create GLFW window\n";
 		return false;  // le destructeur fera glfwTerminate()
@@ -70,9 +78,9 @@ bool Game::init() {
 	updateProjection();
 
 	registerCallbacks();
-	glfwSetInputMode(m_window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+	glfwSetInputMode(m_window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
 	if (glfwRawMouseMotionSupported())
-		glfwSetInputMode(m_window, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
+		//glfwSetInputMode(m_window, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
 
 	loadResources();
 	return true;
