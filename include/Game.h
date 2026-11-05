@@ -2,6 +2,7 @@
 #define GAME_H
 
 #include "camera.h"
+#include "glm/ext/matrix_float4x4.hpp"
 #include "mesh.h"
 #include "model.h"
 #include "renderer.h"
@@ -78,15 +79,8 @@ class Game {
 	// rendu
 	Renderer m_renderer;
 
-	// scène (provisoire : deviendra des Room / Entity)
-	// unique_ptr : un Mesh ne peut être construit qu'une fois le contexte GL
-	// créé.
-	std::unique_ptr<Mesh> m_room;
-	glm::mat4 m_roomModel{1.0f};
-	std::unique_ptr<Model> m_dead_body;
-	glm::mat4 m_deadBodyModel{1.0f};
-
 	// colision
+	glm::mat4 m_roomModel{1.0};
 	std::vector<AABB> m_walls;
 	float m_playerRadius{0.3f};
 	float m_eyeHeight{1.6f};

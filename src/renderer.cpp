@@ -3,10 +3,13 @@
 #include "renderer.h"
 #include "callback.h"  // Callback::loadTexture (temporaire)
 #include "camera.h"
+#include "mesh.h"
 #include "model.h"
 #include <algorithm>
 #include <glm/gtc/type_ptr.hpp>
 #include <iostream>
+#include <memory>
+#include <tuple>
 // clang-format on
 
 Renderer::Renderer() = default;
@@ -25,6 +28,7 @@ bool Renderer::init(const char *vertexPath, const char *fragmentPath) {
 }
 
 void Renderer::shutdown() {
+	m_objects.clear();
 	for (const auto &entry : m_textureCache) {
 		glDeleteTextures(1, &entry.second.linear);
 		glDeleteTextures(1, &entry.second.srgb);
@@ -120,4 +124,32 @@ void Renderer::draw(Mesh &mesh, const glm::mat4 &model) {
 }
 void Renderer::draw(Model &model, const glm::mat4 &transform) {
 	for (Mesh &mesh : model.meshes) draw(mesh, transform);
+}
+
+Renderer::ObjectId Renderer::addObject(Mesh mesh, const glm::mat4 &model) {
+	RenderItem item;
+	item.meshes.push_back(std::move(mesh));
+	item.model = model;
+	m_objects.push_back(std::move(item));
+	return m_objects.size() - 1;
+}
+
+Renderer::ObjectId Renderer::addObject(Model model,
+                                       const glm::mat4 &modelMatrix) {
+	RenderItem item;
+	item.meshes = std::move(model.meshes);  // on récupère les meshes du Model
+	item.model = modelMatrix;
+	m_objects.push_back(std::move(item));
+	return m_objects.size() - 1;
+}
+
+void Renderer::setObjectTransform(ObjectId id, const glm::mat4 &model) {
+	if (id < m_objects.size())
+		m_objects[id].model = model;
+}
+
+void Renderer::drawAll() {
+	for (auto &obj : m_objects)
+		for (Mesh &mesh : obj.meshes)
+			draw(mesh, obj.model);  // ta méthode draw(Mesh&, mat4) existante
 }

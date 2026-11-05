@@ -1,12 +1,14 @@
 #ifndef RENDERER_H
 #define RENDERER_H
 
+#include "glm/ext/matrix_float4x4.hpp"
 #include "mesh.h"  // Mesh, Texture, Vertex (+ shader.h)
 #include "model.h"
 #include <glm/glm.hpp>
 #include <map>
 #include <memory>
 #include <string>
+#include <tuple>
 #include <unordered_map>
 #include <vector>
 
@@ -33,6 +35,7 @@ class Renderer {
 	// Doit correspondre à la taille des tableaux dans le fragment shader.
 	static constexpr int kMaxLights = 4;
 
+	using ObjectId = std::size_t;
 	Renderer();
 	~Renderer();
 
@@ -59,11 +62,17 @@ class Renderer {
 	bool gamma() const { return m_gamma; }
 	bool blinn() const { return m_blinn; }
 	void setClearColor(const glm::vec3 &color) { m_clearColor = color; }
-
+	// -- modifie the scene
+	ObjectId addObject(Mesh mesh,
+	                   const glm::mat4 &modelMatrix = glm::mat4(1.0f));
+	ObjectId addObject(Model model,
+	                   const glm::mat4 &modelMatrix = glm::mat4(1.0f));
+	void setObjectTransform(ObjectId id, const glm::mat4 &model);
 	// --- dessin ---
 	void beginFrame(const Camera &camera, const glm::mat4 &projection);
 	void draw(Mesh &mesh, const glm::mat4 &model = glm::mat4(1.0f));
 	void draw(Model &model, const glm::mat4 &transform = glm::mat4(1.0f));
+	void drawAll();
 
   private:
 	struct TexVariants {
@@ -78,6 +87,12 @@ class Renderer {
 	glm::vec3 m_clearColor{0.1f};
 	bool m_gamma{false};
 	bool m_blinn{true};
+
+	struct RenderItem {
+		std::vector<Mesh> meshes;
+		glm::mat4 model{1.0f};
+	};
+	std::vector<RenderItem> m_objects;
 };
 
 #endif  // !RENDERER_H

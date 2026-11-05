@@ -2,6 +2,7 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include "Game.h"
+#include "glm/ext/matrix_float4x4.hpp"
 #include "glm/ext/matrix_transform.hpp"
 #include "glm/ext/vector_float3.hpp"
 #include "glm/ext/vector_float4.hpp"
@@ -132,17 +133,23 @@ void Game::loadResources() {
 	const Texture wall = m_renderer.loadTexture(FileSystem::getPath(
 	    "resources/textures/metal.png"));  // votre texture de mur
 	std::vector<Texture> textures{wall, wood};
-	m_room = std::make_unique<Mesh>(
-	    MeshFactory::room(kRoomW, kRoomD, kRoomH, textures));
 	m_roomModel = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+	m_renderer.addObject(MeshFactory::room(kRoomW, kRoomD, kRoomH, textures),
+	                     m_roomModel);
+
+	// setup colision
 	buildRectColliders();
+	// setup camera
 	m_eyeHeight = m_roomModel[3].y + c_eyeHeight;  // sol + hauteur des yeux
 	m_camera.Position.y = m_eyeHeight;
 	// load model
-	m_dead_body = std::make_unique<Model>(
-	    FileSystem::getPath("resources/objects/hospital_stuff/dead_body.obj"));
-	m_deadBodyModel = glm::translate(m_deadBodyModel, m_camera.Position);
-	m_deadBodyModel = glm::scale(glm::mat4(1.0f), glm::vec3(0.1f));
+	const glm::mat4 bodyMatrix =
+	    glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, 0.0f)) *
+	    glm::scale(glm::mat4(1.0f), glm::vec3(0.1f));
+
+	m_renderer.addObject(Model(FileSystem::getPath(
+	                         "resources/objects/hospital_stuff/dead_body.obj")),
+	                     bodyMatrix);
 }
 
 // ---------------------------------------------------------------------------
@@ -210,10 +217,7 @@ void Game::update(float /*dt*/) {
 
 void Game::render() {
 	m_renderer.beginFrame(m_camera, m_projection);
-	m_renderer.draw(*m_room, m_roomModel);
-	// Game.cpp, dans render()
-	if (m_dead_body)
-		m_renderer.draw(*m_dead_body, m_deadBodyModel);
+	m_renderer.drawAll();
 }
 
 // ---------------------------------------------------------------------------
@@ -288,8 +292,6 @@ void Game::updateProjection() {
 void Game::shutdown() {
 	// 1. resources GL : le contexte doit encore exister
 	if (m_glReady) {
-		m_room.reset();
-		m_dead_body.reset();
 		m_renderer.shutdown();
 		m_glReady = false;
 	}
