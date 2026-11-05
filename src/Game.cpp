@@ -37,7 +37,8 @@ Game::~Game() { shutdown(); }
 // ---------------------------------------------------------------------------
 
 bool Game::init() {
-#if GLFW_VERSION_MAJOR > 3 || (GLFW_VERSION_MAJOR == 3 && GLFW_VERSION_MINOR >= 4)
+#if GLFW_VERSION_MAJOR > 3 ||                                                  \
+    (GLFW_VERSION_MAJOR == 3 && GLFW_VERSION_MINOR >= 4)
 	glfwInitHint(GLFW_PLATFORM, GLFW_PLATFORM_WAYLAND);
 #endif
 	if (!glfwInit()) {
@@ -78,9 +79,9 @@ bool Game::init() {
 	updateProjection();
 
 	registerCallbacks();
-	glfwSetInputMode(m_window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
+	glfwSetInputMode(m_window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 	if (glfwRawMouseMotionSupported())
-		//glfwSetInputMode(m_window, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
+		glfwSetInputMode(m_window, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
 
 	loadResources();
 	return true;
