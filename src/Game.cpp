@@ -133,7 +133,7 @@ void Game::loadResources() {
 	const Texture wall = m_renderer.loadTexture(FileSystem::getPath(
 	    "resources/textures/metal.png"));  // votre texture de mur
 	std::vector<Texture> textures{wall, wood};
-	m_roomModel = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+	m_roomModel = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 1.2f, 0.0f));
 	m_renderer.addObject(MeshFactory::room(kRoomW, kRoomD, kRoomH, textures),
 	                     m_roomModel);
 
@@ -143,15 +143,24 @@ void Game::loadResources() {
 	m_eyeHeight = m_roomModel[3].y + c_eyeHeight;  // sol + hauteur des yeux
 	m_camera.Position.y = m_eyeHeight;
 	// load model
+	// load body dead
+	Model body(
+	    FileSystem::getPath("resources/objects/hospital_stuff/dead_body.obj"),
+	    m_renderer);
 	const glm::mat4 bodyMatrix =
-	    glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, 0.0f)) *
-	    glm::scale(glm::mat4(1.0f), glm::vec3(0.1f));
-
-	m_renderer.addObject(
-	    Model(FileSystem::getPath(
-	              "resources/objects/hospital_stuff/dead_body.obj"),
-		      m_renderer),
-	    bodyMatrix);
+	    glm::translate(glm::mat4(1.0f), glm::vec3(1.0f, 0.0f, 0.0f)) *
+	    body.normalizeMatrix(
+	        1.5f);  // 0 = garde l'échelle d'origine (ou mets 0.1 à la main)
+	m_renderer.addObject(std::move(body), bodyMatrix);
+	// exit door
+	Model door(
+	    FileSystem::getPath("resources/objects/exit_door/source/Exit_Dooe.obj"),
+	    m_renderer);
+	const glm::mat4 exitDoorMatrix =
+	    glm::translate(glm::mat4(1.0f),
+		               glm::vec3(9.9f, 0.0f, 0.0f)) *  // position dans la salle
+	    door.normalizeMatrix(2.2f);
+	m_renderer.addObject(std::move(door), exitDoorMatrix);
 }
 
 // ---------------------------------------------------------------------------

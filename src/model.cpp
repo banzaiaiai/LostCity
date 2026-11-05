@@ -1,3 +1,4 @@
+#include "glm/ext/matrix_transform.hpp"
 #include "glm/ext/vector_float3.hpp"
 #include "model.h"
 #include "shader.h"
@@ -100,4 +101,32 @@ vector<Texture> Model::loadMaterialTextures(aiMaterial *mat, aiTextureType type,
 		    m_renderer->loadTexture(directory + '/' + str.C_Str(), typeName));
 	}
 	return textures;
+}
+Bounds Model::bounds() const {
+	Bounds b;
+	bool first = true;
+	for (const Mesh &m : meshes)
+		for (const Vertex &v : m.vertices) {
+			if (first) {
+				b.min = b.max = v.Position;
+				first = false;
+			}
+			b.min = glm::min(b.min, v.Position);
+			b.max = glm::max(b.max, v.Position);
+		}
+	return b;
+}
+
+glm::mat4 Model::normalizeMatrix(float height) const {
+	const Bounds b = bounds();
+	const glm::vec3 c = b.center();
+	// centre en X/Z, bas du modèle à y = 0
+	const glm::vec3 offset(-c.x, -b.min.y, -c.z);
+
+	float s = 1.0f;
+	if (height > 0.0f && b.size().y > 1e-6f)
+		s = height / b.size().y;
+
+	return glm::scale(glm::mat4(1.0f), glm::vec3(s)) *
+	       glm::translate(glm::mat4(1.0f), offset);
 }

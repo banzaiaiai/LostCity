@@ -90,7 +90,7 @@ class Renderer {
 
 	struct RenderItem {
 		std::vector<Mesh> meshes;
-		glm::mat4 model{1.0f};
+		glm::mat4 model;
 	};
 	std::vector<RenderItem> m_objects;
 };
