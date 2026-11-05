@@ -6,20 +6,20 @@
 #include <assimp/scene.h>
 #include <string>
 
-using namespace std;
+class Renderer;  // déclaration anticipée (pas d'include, pour éviter une
+                 // boucle)
 
 class Model {
   public:
-	Model(string path) { loadModel(path); }
+	Model(string path, Renderer &renderer);
 	void Draw(Shader &shader);
 
-	vector<Mesh> meshes;
-	vector<Texture> textures_loaded;
+	vector<Mesh> meshes;  // textures_loaded est supprimé
 
-  private:  // model data
+  private:
 	string directory;
+	Renderer *m_renderer{nullptr};  // valide uniquement pendant le chargement
 
-  private:  // method
 	void loadModel(string path);
 	void processNode(aiNode *node, const aiScene *scene);
 	Mesh processMesh(aiMesh *mesh, const aiScene *scene);

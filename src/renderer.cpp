@@ -49,6 +49,7 @@ void Renderer::setViewport(int width, int height) {
 Texture Renderer::loadTexture(const std::string &path,
                               const std::string &type) {
 	auto it = m_textureCache.find(path);
+
 	if (it == m_textureCache.end()) {
 		TexVariants v;
 		v.linear = Callback::loadTexture(path.c_str(), false);
@@ -61,7 +62,8 @@ Texture Renderer::loadTexture(const std::string &path,
 	Texture tex;
 	tex.type = type;
 	tex.path = path;
-	tex.id = m_gamma ? it->second.srgb : it->second.linear;
+	tex.id = (m_gamma && type == "texture_diffuse") ? it->second.srgb
+	                                                : it->second.linear;
 	return tex;
 }
 
@@ -113,11 +115,12 @@ void Renderer::draw(Mesh &mesh, const glm::mat4 &model) {
 	// Choisit la variante linéaire / sRGB des textures chargées par le
 	// Renderer ; les textures venant d'ailleurs ne sont pas touchées.
 	for (Texture &t : mesh.textures) {
+		if (t.type != "texture_diffuse")
+			continue;
 		const auto it = m_variants.find(t.id);
 		if (it != m_variants.end())
 			t.id = m_gamma ? it->second.srgb : it->second.linear;
 	}
-
 	m_shader->use();
 	m_shader->setMat4("model", model);
 	mesh.Draw(*m_shader);  // lie les textures (unité 0..n) puis dessine

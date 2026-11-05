@@ -147,9 +147,11 @@ void Game::loadResources() {
 	    glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, 0.0f)) *
 	    glm::scale(glm::mat4(1.0f), glm::vec3(0.1f));
 
-	m_renderer.addObject(Model(FileSystem::getPath(
-	                         "resources/objects/hospital_stuff/dead_body.obj")),
-	                     bodyMatrix);
+	m_renderer.addObject(
+	    Model(FileSystem::getPath(
+	              "resources/objects/hospital_stuff/dead_body.obj"),
+		      m_renderer),
+	    bodyMatrix);
 }
 
 // ---------------------------------------------------------------------------
